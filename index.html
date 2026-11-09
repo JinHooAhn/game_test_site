@@ -9,21 +9,33 @@
 <body>
   <header>
     <h1>내 게임 사이트</h1>
-    <p>직접 만든 게임을 플레이해 보세요.</p>
+    <p>직접 만든 게임을 골라서 플레이해 보세요.</p>
   </header>
 
   <main>
-    <div class="game-frame">
-      <!-- 지금은 테스트용 게임입니다. 내 게임으로 교체하세요. -->
-      <canvas id="game" width="640" height="360" tabindex="0"></canvas>
-    </div>
-    <p class="hint">게임 화면을 클릭한 뒤 방향키(또는 WASD)로 움직여 보세요.</p>
+    <h2 class="list-title">게임 목록</h2>
+    <ul class="game-list">
+      <li>
+        <a class="game-card" href="square.html">
+          <div class="icon">🟦</div>
+          <h3>사각형 움직이기</h3>
+          <p>방향키로 파란 사각형을 움직여 보는 간단한 테스트 게임이에요.</p>
+          <span class="tag">방향키 · WASD</span>
+        </a>
+      </li>
+      <li>
+        <a class="game-card" href="card.html">
+          <div class="icon">🃏</div>
+          <h3>짝맞추기 타임어택</h3>
+          <p>분수·소수·백분율·그림 중 크기가 같은 카드를 1분 안에 최대한 많이 맞춰요.</p>
+          <span class="tag">1분 · 난이도 3단계</span>
+        </a>
+      </li>
+    </ul>
   </main>
 
   <footer>
     <p>&copy; 2026 내 게임 사이트</p>
   </footer>
-
-  <script src="game.js"></script>
 </body>
 </html>
