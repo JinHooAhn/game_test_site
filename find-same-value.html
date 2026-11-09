@@ -1,0 +1,508 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>같은 값 찾기</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Jua&family=Noto+Sans+KR:wght@400;500;700&display=swap">
+<style>
+/* Layout: one narrow column that works as a phone app and sits centered on a PC.
+   Colour is information: percent = blue, decimal = amber, fraction = green, everywhere. */
+:root {
+  --bg: #edf1f7;
+  --surface: #ffffff;
+  --ink: #16203a;
+  --muted: #5b6781;
+  --line: #d5dce8;
+  --pct: #2457e6;  --pct-soft: #dce6ff;
+  --dec: #8f5a00;  --dec-soft: #ffebc2;
+  --frac: #0a6e4e; --frac-soft: #d3f3e7;
+  --good: #0a6e4e;
+  --bad: #c13a32;  --bad-soft: #fbdedc;
+  --font-display: "Jua", "Apple SD Gothic Neo", "Malgun Gothic", system-ui, sans-serif;
+  --font-body: "Noto Sans KR", "Apple SD Gothic Neo", "Malgun Gothic", system-ui, sans-serif;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0f1626; --surface: #18223a; --ink: #eaf0ff; --muted: #9aa7c4; --line: #2a3656;
+    --pct: #8fb0ff; --pct-soft: #1e2f63;
+    --dec: #f2b93b; --dec-soft: #4a3710;
+    --frac: #4fd1a1; --frac-soft: #12463a;
+    --good: #4fd1a1; --bad: #ff8a81; --bad-soft: #4a2220;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0f1626; --surface: #18223a; --ink: #eaf0ff; --muted: #9aa7c4; --line: #2a3656;
+  --pct: #8fb0ff; --pct-soft: #1e2f63;
+  --dec: #f2b93b; --dec-soft: #4a3710;
+  --frac: #4fd1a1; --frac-soft: #12463a;
+  --good: #4fd1a1; --bad: #ff8a81; --bad-soft: #4a2220;
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+body {
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--font-body);
+  font-size: 16px;
+  line-height: 1.5;
+  padding-block: 20px 40px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  -webkit-tap-highlight-color: transparent;
+}
+.wrap { max-width: 640px; margin: 0 auto; display: grid; gap: 20px; }
+h1, h2 { font-family: var(--font-display); font-weight: 400; margin: 0; text-wrap: balance; }
+p { margin: 0; }
+button { font: inherit; color: inherit; cursor: pointer; }
+button:focus-visible { outline: 3px solid var(--ink); outline-offset: 3px; }
+
+/* value chips + fractions */
+.chip {
+  display: inline-flex; align-items: center; justify-content: center;
+  background: var(--fs); color: var(--fc);
+  font-family: var(--font-display); font-size: 1.35rem; line-height: 1.2;
+  padding: 6px 14px; border-radius: 10px; min-height: 2.3rem;
+}
+.chip.ask { background: transparent; border: 2px dashed var(--fc); }
+.eq { font-family: var(--font-display); color: var(--muted); font-size: 1.3rem; }
+.frac { display: inline-flex; flex-direction: column; align-items: center; line-height: 1.05; vertical-align: middle; }
+.frac .n { padding: 0 .2em .06em; border-bottom: .07em solid currentColor; }
+.frac .d { padding: .06em .2em 0; }
+.chip .frac { font-size: .85em; }
+
+/* home */
+.hero { display: grid; gap: 14px; padding-top: 8px; }
+.hero h1 { font-size: clamp(2.4rem, 11vw, 3.4rem); line-height: 1.1; }
+.hero .lead { color: var(--muted); max-width: 36ch; }
+.hero-eq { display: flex; align-items: center; flex-wrap: wrap; gap: 10px; }
+.hero-eq .chip { font-size: 1.8rem; padding: 8px 18px; }
+.hero-eq .eq { font-size: 1.8rem; }
+.cards { display: grid; gap: 12px; }
+.card {
+  display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px;
+  text-align: left; width: 100%;
+  background: var(--surface); border: 2px solid var(--line); border-radius: 18px; padding: 18px;
+  transition: transform .15s ease, border-color .15s ease;
+}
+.card:hover { transform: translateY(-2px); border-color: var(--ink); }
+.card .t { font-family: var(--font-display); font-size: 1.6rem; line-height: 1.2; }
+.card .pair { display: flex; align-items: center; gap: 8px; }
+.card .pair .chip { font-size: 1.15rem; }
+
+/* sub select + shared top row */
+.topbar { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.back {
+  background: transparent; border: 2px solid var(--line); border-radius: 999px; padding: 6px 16px; color: var(--muted);
+}
+.back:hover { border-color: var(--ink); color: var(--ink); }
+.sub-head { display: grid; gap: 6px; }
+.sub-head h2 { font-size: 2rem; }
+.sub-head p { color: var(--muted); }
+.dirs { display: grid; gap: 12px; }
+.dir {
+  display: grid; gap: 12px; text-align: left; width: 100%;
+  background: var(--surface); border: 2px solid var(--line); border-radius: 18px; padding: 18px;
+  transition: transform .15s ease, border-color .15s ease;
+}
+.dir:hover { transform: translateY(-2px); border-color: var(--ink); }
+.dir .t { font-family: var(--font-display); font-size: 1.7rem; line-height: 1.2; }
+.dir .t i { font-style: normal; color: var(--muted); padding: 0 .15em; }
+.dir .ex { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+
+/* game */
+.hud { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.mode { display: flex; align-items: center; gap: 8px; font-family: var(--font-display); font-size: 1.15rem; }
+.mode i { font-style: normal; color: var(--muted); }
+.mode .tag { background: var(--fs); color: var(--fc); border-radius: 8px; padding: 2px 10px; }
+.score { color: var(--muted); font-size: .95rem; font-variant-numeric: tabular-nums; }
+.pips { display: grid; grid-template-columns: repeat(10, 1fr); gap: 5px; }
+.pip { height: 8px; border-radius: 4px; background: var(--line); transition: background .2s ease; }
+.pip.cur { background: var(--ink); }
+.pip.ok { background: var(--good); }
+.pip.miss { background: var(--dec); }
+
+.qcard {
+  background: var(--fs); color: var(--fc); border-radius: 24px; padding: 22px 20px 20px;
+  display: grid; gap: 14px; justify-items: center; text-align: center;
+}
+.qtag { font-size: .85rem; font-weight: 700; letter-spacing: .08em; background: var(--surface); border-radius: 999px; padding: 2px 14px; }
+.qval { font-family: var(--font-display); font-size: clamp(3.4rem, 17vw, 6rem); line-height: 1.1; min-height: 1.2em; display: flex; align-items: center; justify-content: center; }
+.qval .frac { font-size: .85em; }
+.prompt { color: var(--ink); font-size: 1rem; }
+.bar { width: 100%; display: grid; grid-template-columns: repeat(20, 1fr); gap: 3px; }
+.cell { height: 12px; border-radius: 3px; background: var(--surface); transition: background .25s ease; }
+.cell.on { background: var(--fc); }
+.bar-cap { font-size: .85rem; color: var(--ink); visibility: hidden; font-variant-numeric: tabular-nums; }
+.bar-cap.on { visibility: visible; }
+
+.choices { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+.choice {
+  min-height: 104px; min-width: 0; padding: 16px 4px;
+  display: flex; align-items: center; justify-content: center;
+  background: var(--surface); border: 2px solid var(--line); border-radius: 18px;
+  font-family: var(--font-display); font-size: clamp(1.8rem, 8vw, 2.8rem); line-height: 1.1;
+  color: var(--ink);
+  transition: transform .12s ease, border-color .12s ease, background .12s ease, opacity .2s ease;
+}
+.choice .frac { font-size: .85em; }
+.choice:hover:not(:disabled) { border-color: var(--tc); transform: translateY(-2px); }
+.choice:active:not(:disabled) { transform: translateY(0) scale(.98); }
+.choice .key { position: absolute; }
+.choice.ok { background: var(--tcs); border-color: var(--tc); color: var(--tc); }
+.choice.no { background: var(--bad-soft); border-color: var(--bad); color: var(--bad); opacity: .75; animation: shake .35s; }
+.choice.dim { opacity: .4; }
+.choice:disabled { cursor: default; }
+@keyframes shake { 0%,100% { transform: translateX(0); } 25% { transform: translateX(-6px); } 75% { transform: translateX(6px); } }
+
+.msg { min-height: 1.6em; text-align: center; color: var(--muted); }
+.msg.bad { color: var(--bad); font-weight: 700; }
+.reveal { display: grid; gap: 12px; justify-items: center; visibility: hidden; }
+.reveal.on { visibility: visible; }
+.reveal .row { display: flex; align-items: center; justify-content: center; gap: 10px; flex-wrap: wrap; }
+.next {
+  background: var(--ink); color: var(--bg); border: 0; border-radius: 999px;
+  font-family: var(--font-display); font-size: 1.2rem; padding: 10px 28px;
+}
+.kbd { text-align: center; font-size: .85rem; color: var(--muted); }
+@media (hover: none) { .kbd { display: none; } }
+
+/* result */
+.result { display: grid; gap: 18px; text-align: center; justify-items: center; padding-top: 8px; }
+.result h2 { font-size: clamp(2.2rem, 10vw, 3.2rem); }
+.big { font-family: var(--font-display); font-size: clamp(3.6rem, 18vw, 6rem); line-height: 1; }
+.big small { font-size: .4em; color: var(--muted); }
+.review { display: grid; gap: 8px; justify-items: center; width: 100%; }
+.review h3 { margin: 0; font-size: .95rem; color: var(--muted); font-weight: 500; }
+.review .row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; justify-content: center; }
+.btns { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; }
+.btn { border: 2px solid var(--ink); background: var(--ink); color: var(--bg); border-radius: 999px; font-family: var(--font-display); font-size: 1.2rem; padding: 10px 26px; }
+.btn.alt { background: transparent; color: var(--ink); }
+
+@media (prefers-reduced-motion: reduce) {
+  * { animation: none !important; transition: none !important; }
+}
+</style>
+
+<main class="wrap">
+
+  <!-- 1. 첫 화면 -->
+  <section id="v-home" class="wrap">
+    <div class="hero">
+      <h1>같은 값 찾기</h1>
+      <div class="hero-eq" aria-label="2분의 1은 0.5이고 50퍼센트와 같아요">
+        <span class="chip" style="--fc:var(--frac);--fs:var(--frac-soft)"><span class="frac"><span class="n">1</span><span class="d">2</span></span></span>
+        <span class="eq">=</span>
+        <span class="chip" style="--fc:var(--dec);--fs:var(--dec-soft)">0.5</span>
+        <span class="eq">=</span>
+        <span class="chip" style="--fc:var(--pct);--fs:var(--pct-soft)">50%</span>
+      </div>
+      <p class="lead">분수, 소수, 백분율은 모양만 다른 같은 값이에요. 문제와 같은 값을 보기에서 눌러 보세요.</p>
+    </div>
+    <div class="cards" id="cards"></div>
+  </section>
+
+  <!-- 2. 방향 선택 -->
+  <section id="v-sub" class="wrap" hidden>
+    <div class="topbar"><button class="back" id="sub-back" type="button">← 처음으로</button></div>
+    <div class="sub-head">
+      <h2 id="sub-title"></h2>
+      <p>어느 쪽에서 어느 쪽으로 바꿔 볼까요?</p>
+    </div>
+    <div class="dirs" id="dirs"></div>
+  </section>
+
+  <!-- 3. 게임 -->
+  <section id="v-game" class="wrap" hidden>
+    <div class="topbar"><button class="back" id="game-back" type="button">← 그만하기</button></div>
+    <div class="hud">
+      <div class="mode" id="mode"></div>
+      <div class="score" id="score" aria-live="polite"></div>
+    </div>
+    <div class="pips" id="pips" aria-hidden="true"></div>
+    <div class="qcard" id="qcard">
+      <span class="qtag" id="qtag"></span>
+      <div class="qval" id="qval"></div>
+      <p class="prompt" id="prompt"></p>
+      <div class="bar" id="bar" aria-hidden="true"></div>
+      <p class="bar-cap" id="bar-cap"></p>
+    </div>
+    <div class="choices" id="choices"></div>
+    <p class="msg" id="msg" aria-live="polite"></p>
+    <div class="reveal" id="reveal">
+      <div class="row" id="reveal-eq"></div>
+      <button class="next" id="next" type="button">다음 문제</button>
+    </div>
+    <p class="kbd">키보드 1, 2, 3 으로도 고를 수 있어요.</p>
+  </section>
+
+  <!-- 4. 결과 -->
+  <section id="v-result" class="wrap" hidden>
+    <div class="result">
+      <p class="mode" id="r-mode" style="justify-content:center"></p>
+      <h2 id="r-title"></h2>
+      <p class="big" id="r-score"></p>
+      <p id="r-note" style="color:var(--muted)"></p>
+      <div class="review" id="review" hidden>
+        <h3>한 번에 못 맞힌 문제</h3>
+        <div id="review-list" style="display:grid;gap:8px;justify-items:center"></div>
+      </div>
+      <div class="btns">
+        <button class="btn" id="again" type="button">다시 하기</button>
+        <button class="btn alt" id="menu" type="button">다른 게임 고르기</button>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<script>
+(function () {
+  var VALUES = [];
+  for (var v = 5; v <= 95; v += 5) VALUES.push(v);
+  var ROUNDS = 10;
+
+  var FORMS = {
+    pct:  { name: "백분율", obj: "백분율을" },
+    dec:  { name: "소수",   obj: "소수를" },
+    frac: { name: "분수",   obj: "분수를" }
+  };
+  // 첫 화면 순서: 백분율과 소수, 분수와 소수, 분수와 백분율
+  var CATS = [
+    { id: "pd", title: "백분율과 소수", a: "pct",  b: "dec" },
+    { id: "fd", title: "분수와 소수",   a: "frac", b: "dec" },
+    { id: "fp", title: "분수와 백분율", a: "pct",  b: "frac" }
+  ];
+
+  function gcd(a, b) { return b ? gcd(b, a % b) : a; }
+  function parts(n) { var g = gcd(n, 100); return [n / g, 100 / g]; }
+  function valHTML(f, n) {
+    if (f === "pct") return n + "%";
+    if (f === "dec") return String(n / 100);
+    var p = parts(n);
+    return '<span class="frac"><span class="n">' + p[0] + '</span><span class="d">' + p[1] + '</span></span>';
+  }
+  function valLabel(f, n) {
+    if (f === "pct") return n + " 퍼센트";
+    if (f === "dec") return String(n / 100);
+    var p = parts(n);
+    return p[1] + "분의 " + p[0];
+  }
+  function sty(f) { return "--fc:var(--" + f + ");--fs:var(--" + f + "-soft)"; }
+  function chip(f, n, extra) { return '<span class="chip ' + (extra || "") + '" style="' + sty(f) + '">' + (extra === "ask" ? "?" : valHTML(f, n)) + "</span>"; }
+  function shuffle(a) {
+    a = a.slice();
+    for (var i = a.length - 1; i > 0; i--) {
+      var j = Math.floor(Math.random() * (i + 1));
+      var t = a[i]; a[i] = a[j]; a[j] = t;
+    }
+    return a;
+  }
+  function $(id) { return document.getElementById(id); }
+
+  var views = ["home", "sub", "game", "result"];
+  function show(name) {
+    views.forEach(function (v) { $("v-" + v).hidden = (v !== name); });
+    window.scrollTo(0, 0);
+  }
+
+  var state = null;
+  var timer = null;
+  var currentCat = null;
+
+  /* ---------- 첫 화면 ---------- */
+  var cardsEl = $("cards");
+  CATS.forEach(function (c) {
+    var b = document.createElement("button");
+    b.type = "button";
+    b.className = "card";
+    b.innerHTML = '<span class="t">' + c.title + '</span><span class="pair">' +
+      chip(c.a, 35) + '<span class="eq">=</span>' + chip(c.b, 35) + "</span>";
+    b.addEventListener("click", function () { openSub(c); });
+    cardsEl.appendChild(b);
+  });
+
+  /* ---------- 방향 선택 ---------- */
+  function openSub(c) {
+    currentCat = c;
+    $("sub-title").textContent = c.title;
+    var box = $("dirs");
+    box.innerHTML = "";
+    [[c.a, c.b], [c.b, c.a]].forEach(function (d) {
+      var b = document.createElement("button");
+      b.type = "button";
+      b.className = "dir";
+      b.innerHTML = '<span class="t">' + FORMS[d[0]].name + " <i>→</i> " + FORMS[d[1]].name + "</span>" +
+        '<span class="ex">' + chip(d[0], 35) + '<span class="eq">→</span>' + chip(d[1], 35, "ask") + "</span>";
+      b.addEventListener("click", function () { startGame(d[0], d[1]); });
+      box.appendChild(b);
+    });
+    show("sub");
+  }
+  $("sub-back").addEventListener("click", function () { show("home"); });
+
+  /* ---------- 게임 ---------- */
+  function startGame(from, to) {
+    clearTimeout(timer);
+    state = {
+      from: from, to: to,
+      order: shuffle(VALUES).slice(0, ROUNDS),
+      i: 0, results: [], missed: false, locked: false, n: 0
+    };
+    $("mode").innerHTML = '<span class="tag" style="' + sty(from) + '">' + FORMS[from].name + "</span><i>→</i>" +
+      '<span class="tag" style="' + sty(to) + '">' + FORMS[to].name + "</span>";
+    show("game");
+    showQuestion();
+  }
+
+  function renderPips() {
+    var box = $("pips");
+    box.innerHTML = "";
+    for (var k = 0; k < ROUNDS; k++) {
+      var s = document.createElement("span");
+      var cls = "pip";
+      if (k < state.results.length) cls += state.results[k] ? " ok" : " miss";
+      else if (k === state.i) cls += " cur";
+      s.className = cls;
+      box.appendChild(s);
+    }
+  }
+  function renderScore() {
+    var ok = state.results.filter(Boolean).length;
+    $("score").textContent = (state.i + 1) + " / " + ROUNDS + " 문제 · 한 번에 맞힘 " + ok;
+  }
+
+  function showQuestion() {
+    var s = state;
+    var n = s.order[s.i];
+    s.n = n; s.missed = false; s.locked = false;
+
+    var q = $("qcard");
+    q.setAttribute("style", sty(s.from));
+    $("qtag").textContent = FORMS[s.from].name;
+    $("qval").innerHTML = valHTML(s.from, n);
+    $("qval").setAttribute("aria-label", valLabel(s.from, n));
+    $("prompt").textContent = "같은 값의 " + FORMS[s.to].obj + " 고르세요";
+
+    var bar = $("bar");
+    bar.innerHTML = "";
+    for (var c = 0; c < 20; c++) {
+      var cell = document.createElement("span");
+      cell.className = "cell";
+      bar.appendChild(cell);
+    }
+    $("bar-cap").className = "bar-cap";
+    $("bar-cap").textContent = "20칸 중 " + (n / 5) + "칸";
+
+    var pool = shuffle(VALUES.filter(function (v) { return v !== n && Math.abs(v - n) <= 15; })).slice(0, 2);
+    var opts = shuffle([n].concat(pool));
+    var ch = $("choices");
+    ch.setAttribute("style", "--tc:var(--" + s.to + ");--tcs:var(--" + s.to + "-soft)");
+    ch.innerHTML = "";
+    opts.forEach(function (v, idx) {
+      var b = document.createElement("button");
+      b.type = "button";
+      b.className = "choice";
+      b.innerHTML = valHTML(s.to, v);
+      b.setAttribute("aria-label", valLabel(s.to, v));
+      b.dataset.v = v;
+      b.addEventListener("click", function () { pick(b); });
+      ch.appendChild(b);
+    });
+
+    $("msg").className = "msg";
+    $("msg").textContent = "";
+    $("reveal").className = "reveal";
+    $("next").textContent = (s.i === ROUNDS - 1) ? "결과 보기" : "다음 문제";
+    renderPips();
+    renderScore();
+  }
+
+  function pick(btn) {
+    var s = state;
+    if (!s || s.locked || btn.disabled) return;
+    if (Number(btn.dataset.v) === s.n) {
+      s.locked = true;
+      s.results.push(!s.missed);
+      btn.classList.add("ok");
+      Array.prototype.forEach.call($("choices").children, function (b) {
+        if (b !== btn) { b.classList.add("dim"); b.disabled = true; }
+      });
+      $("msg").className = "msg";
+      $("msg").textContent = s.missed ? "맞았어요! 같은 값이에요." : "한 번에 맞혔어요!";
+      // 칸 채우기
+      var cells = $("bar").children;
+      for (var k = 0; k < s.n / 5; k++) {
+        cells[k].style.transitionDelay = (k * 25) + "ms";
+        cells[k].classList.add("on");
+      }
+      $("bar-cap").className = "bar-cap on";
+      // 세 가지 표현
+      $("reveal-eq").innerHTML = chip("pct", s.n) + '<span class="eq">=</span>' + chip("dec", s.n) + '<span class="eq">=</span>' + chip("frac", s.n);
+      $("reveal").className = "reveal on";
+      $("next").focus({ preventScroll: true });
+      renderPips();
+      timer = setTimeout(next, 2200);
+    } else {
+      s.missed = true;
+      btn.disabled = true;
+      btn.classList.add("no");
+      $("msg").className = "msg bad";
+      $("msg").textContent = "아니에요. 다시 골라 보세요.";
+    }
+  }
+
+  function next() {
+    clearTimeout(timer);
+    if (!state || !state.locked) return;
+    state.i += 1;
+    if (state.i >= ROUNDS) finish(); else showQuestion();
+  }
+  $("next").addEventListener("click", next);
+
+  $("game-back").addEventListener("click", function () {
+    clearTimeout(timer);
+    state = null;
+    openSub(currentCat);
+  });
+
+  document.addEventListener("keydown", function (e) {
+    if ($("v-game").hidden || !state || state.locked) return;
+    if (e.ctrlKey || e.metaKey || e.altKey) return;
+    var k = Number(e.key);
+    if (k >= 1 && k <= 3) {
+      var b = $("choices").children[k - 1];
+      if (b) pick(b);
+    }
+  });
+
+  /* ---------- 결과 ---------- */
+  function finish() {
+    var s = state;
+    var ok = s.results.filter(Boolean).length;
+    $("r-mode").innerHTML = '<span class="tag" style="' + sty(s.from) + ';background:var(--fs);color:var(--fc);border-radius:8px;padding:2px 10px">' + FORMS[s.from].name +
+      '</span><i style="font-style:normal;color:var(--muted)">→</i><span class="tag" style="' + sty(s.to) + ';background:var(--fs);color:var(--fc);border-radius:8px;padding:2px 10px">' + FORMS[s.to].name + "</span>";
+    $("r-title").textContent = ok === ROUNDS ? "모두 한 번에 맞혔어요!" : ok >= 8 ? "아주 잘했어요!" : ok >= 5 ? "좋아요, 거의 다 왔어요" : "다시 도전해 봐요";
+    $("r-score").innerHTML = ok + "<small> / " + ROUNDS + "</small>";
+    $("r-note").textContent = "한 번에 맞힌 문제 수예요.";
+    var list = $("review-list");
+    list.innerHTML = "";
+    var missedAny = false;
+    s.order.forEach(function (n, idx) {
+      if (s.results[idx]) return;
+      missedAny = true;
+      var row = document.createElement("div");
+      row.className = "row";
+      row.innerHTML = chip(s.from, n) + '<span class="eq">=</span>' + chip(s.to, n);
+      list.appendChild(row);
+    });
+    $("review").hidden = !missedAny;
+    show("result");
+  }
+  $("again").addEventListener("click", function () { startGame(state.from, state.to); });
+  $("menu").addEventListener("click", function () { state = null; show("home"); });
+})();
+</script>
+
+</body></html>
