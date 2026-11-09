@@ -1,0 +1,557 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>분수·소수·백분율·그림 짝맞추기 타임어택</title>
+<style>
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 20px;
+    font-family: -apple-system, "Noto Sans KR", "Malgun Gothic", sans-serif;
+    background: #f3f5f9;
+    color: #222;
+    user-select: none;
+  }
+  h1 { margin: 0; font-size: 1.5rem; text-align: center; padding: 0 12px; }
+  #levels { display: flex; gap: 8px; }
+  .level {
+    padding: 8px 16px;
+    border: 2px solid #c9d1e3;
+    border-radius: 999px;
+    background: #fff;
+    color: #444;
+    font-size: .95rem;
+    cursor: pointer;
+  }
+  .level.active { background: #3b6cf6; border-color: #3b6cf6; color: #fff; font-weight: 700; }
+  #board.cols3 { grid-template-columns: repeat(3, 1fr); width: min(92vw, 330px); }
+  .level:disabled { opacity: .5; cursor: not-allowed; }
+  #stats { display: flex; gap: 28px; font-size: 1.2rem; }
+  #stats b { font-size: 1.6rem; color: #3b6cf6; }
+  #stats #timeBox.low b { color: #e5484d; }
+  #stage {
+    position: relative;
+    display: flex;
+    justify-content: center;
+    width: min(92vw, 440px);
+    min-height: 300px;
+  }
+  #overlay {
+    position: absolute;
+    inset: 0;
+    z-index: 5;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    padding: 16px;
+    border-radius: 16px;
+    background: rgba(243, 245, 249, .96);
+    text-align: center;
+    line-height: 1.5;
+  }
+  #overlay.hidden { display: none; }
+  #overlay h2 { margin: 0; font-size: 1.4rem; }
+  #overlay p { margin: 0; font-size: .95rem; color: #555; }
+  #overlay .big { font-size: 2.6rem; font-weight: 800; color: #3b6cf6; line-height: 1.1; }
+  #overlay .new { color: #e5484d; font-weight: 700; }
+  #overlay ol { margin: 0; padding-left: 1.4em; text-align: left; font-size: .9rem; color: #444; }
+  #overlay ol li.me { font-weight: 700; color: #3b6cf6; }
+  #startBtn {
+    margin-top: 6px;
+    padding: 12px 28px;
+    border: 0;
+    border-radius: 10px;
+    background: #3b6cf6;
+    color: #fff;
+    font-size: 1.05rem;
+    font-weight: 700;
+    cursor: pointer;
+  }
+  #board {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 12px;
+    width: min(92vw, 440px);
+  }
+  .card {
+    aspect-ratio: 3 / 4;
+    border: 2px solid #c9d1e3;
+    border-radius: 12px;
+    background: #fff;
+    color: #222;
+    font-size: 1.7rem;
+    font-weight: 700;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    transition: transform .12s, background .12s, border-color .12s, opacity .2s;
+  }
+  .card:hover { transform: translateY(-3px); }
+  .card.selected { background: #e6edff; border-color: #3b6cf6; transform: translateY(-3px); }
+  .card.wrong { background: #ffe5e5; border-color: #e5484d; animation: shake .25s; }
+  .card.pop { opacity: 0; transform: scale(.7); }
+  .card svg { width: 84%; height: auto; max-height: 84%; display: block; }
+  .frac {
+    display: inline-flex;
+    flex-direction: column;
+    align-items: center;
+    line-height: 1.15;
+  }
+  .frac span:first-child {
+    border-bottom: 3px solid currentColor;
+    padding: 0 .35em .05em;
+  }
+  .frac span:last-child { padding-top: .05em; }
+  @keyframes shake {
+    25% { transform: translateX(-5px); }
+    75% { transform: translateX(5px); }
+  }
+  #hint { font-size: .85rem; color: #777; text-align: center; padding: 0 16px; line-height: 1.5; }
+  #reset {
+    padding: 8px 18px;
+    border: 0;
+    border-radius: 8px;
+    background: #3b6cf6;
+    color: #fff;
+    font-size: .95rem;
+    cursor: pointer;
+  }
+</style>
+</head>
+<body>
+  <h1>분수·소수·백분율·그림 짝맞추기<br>타임어택 1분</h1>
+  <div id="levels">
+    <button class="level" data-level="easy">쉬움 (6장)</button>
+    <button class="level" data-level="normal">보통 (9장)</button>
+    <button class="level" data-level="hard">어려움 (12장)</button>
+  </div>
+  <div id="stats">
+    <div id="timeBox">남은 시간: <b id="timeNum">60</b>초</div>
+    <div id="score">점수: <b id="scoreNum">0</b></div>
+  </div>
+  <div id="stage">
+    <div id="board"></div>
+    <div id="overlay">
+      <h2 id="ovTitle"></h2>
+      <div id="ovBody"></div>
+      <button id="startBtn">시작</button>
+    </div>
+  </div>
+  <div id="hint">크기가 같은 카드 두 장을 클릭하세요.<br>1분 안에 가장 많이 맞춘 사람이 이깁니다.</div>
+  <button id="reset">처음으로</button>
+
+<script>
+(() => {
+  // 난이도: 보드의 카드 수, 그 중 그림 카드 수, 한 줄 카드 수
+  const LEVELS = {
+    easy:   { count: 6,  pics: 2, cols: 3 },
+    normal: { count: 9,  pics: 3, cols: 3 },
+    hard:   { count: 12, pics: 4, cols: 4 },
+  };
+  let level = "normal";
+  const FILL = "#4f7cff";
+
+  // 백분율 값 -> 기약분수(분자/분모)
+  const FRACTIONS = {
+    5:  [1, 20],
+    10: [1, 10],
+    20: [1, 5],
+    25: [1, 4],
+    30: [3, 10],
+    40: [2, 5],
+    45: [9, 20],
+    50: [1, 2],
+    60: [3, 5],
+    75: [3, 4],
+    80: [4, 5],
+    90: [9, 10],
+  };
+
+  function shuffle(arr) {
+    for (let i = arr.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [arr[i], arr[j]] = [arr[j], arr[i]];
+    }
+    return arr;
+  }
+
+  // ---------- 그림 만들기 (SVG) ----------
+  const svgWrap = (viewBox, inner) =>
+    `<svg viewBox="${viewBox}" xmlns="http://www.w3.org/2000/svg">${inner}</svg>`;
+
+  const pathCell = (d, on) =>
+    `<path d="${d}" fill="${on ? FILL : "#fff"}" stroke="#333" stroke-width="2" stroke-linejoin="round"/>`;
+
+  const rectCell = (x, y, size, on) =>
+    `<rect x="${x}" y="${y}" width="${size}" height="${size}" fill="${on ? FILL : "#fff"}" stroke="#333" stroke-width="2"/>`;
+
+  // 0번 칸부터 차례대로 n개 (항상 같은 위치에서 시작해 이어서 색칠)
+  function firstN(n) {
+    return new Set(Array.from({ length: n }, (_, k) => k));
+  }
+
+  // 원: 12시 방향에서 시계방향으로 4등분, 앞에서부터 n칸 색칠
+  function circleSvg(n) {
+    const on = firstN(n);
+    const r = 44;
+    const pt = (a) => `${(50 + r * Math.cos(a)).toFixed(2)},${(50 + r * Math.sin(a)).toFixed(2)}`;
+    let s = "";
+    for (let k = 0; k < 4; k++) {
+      const a0 = -Math.PI / 2 + k * Math.PI / 2;
+      const a1 = a0 + Math.PI / 2;
+      s += pathCell(`M50,50 L${pt(a0)} A${r},${r} 0 0 1 ${pt(a1)} Z`, on.has(k));
+    }
+    return svgWrap("0 0 100 100", s);
+  }
+
+  // 정오각형: 12시 방향 꼭짓점에서 시계방향으로 5등분, 앞에서부터 n칸 색칠
+  function pentagonSvg(n) {
+    const on = firstN(n);
+    const cx = 50, cy = 53, r = 46;
+    const v = (i) => {
+      const a = -Math.PI / 2 + i * 2 * Math.PI / 5;
+      return `${(cx + r * Math.cos(a)).toFixed(2)},${(cy + r * Math.sin(a)).toFixed(2)}`;
+    };
+    let s = "";
+    for (let k = 0; k < 5; k++) {
+      s += pathCell(`M${cx},${cy} L${v(k)} L${v((k + 1) % 5)} Z`, on.has(k));
+    }
+    return svgWrap("0 0 100 100", s);
+  }
+
+  // 직사각형: rows x 5 칸, 좌측 상단에서 가로로 이어서 n칸 색칠 (5칸을 넘으면 한 줄 아래로)
+  function gridSvg(rows, n) {
+    const cols = 5, size = 18, pad = 2;
+    const on = firstN(n);
+    let s = "";
+    for (let r = 0; r < rows; r++) {
+      for (let c = 0; c < cols; c++) {
+        s += rectCell(pad + c * size, pad + r * size, size, on.has(r * cols + c));
+      }
+    }
+    return svgWrap(`0 0 ${cols * size + pad * 2} ${rows * size + pad * 2}`, s);
+  }
+
+  // 분모 d -> 그림 종류
+  const SHAPES = [
+    { key: "circle", d: 4,  make: (n) => circleSvg(n) },     // n/4  : 원
+    { key: "pent",   d: 5,  make: (n) => pentagonSvg(n) },   // n/5  : 정오각형
+    { key: "rect10", d: 10, make: (n) => gridSvg(2, n) },    // n/10 : 2x5 직사각형
+    { key: "rect20", d: 20, make: (n) => gridSvg(4, n) },    // n/20 : 4x5 직사각형
+  ];
+
+  // ---------- 카드 후보(POOL) ----------
+  // 값마다: 분수 1 + 소수 1 + 백분율 1 + (표현 가능한 그림들)
+  const POOL = [];
+  for (const key of Object.keys(FRACTIONS)) {
+    const v = Number(key);
+    const [a, b] = FRACTIONS[v];
+    const fracHtml = `<span class="frac"><span>${a}</span><span>${b}</span></span>`;
+    const decHtml = (v / 100).toFixed(2).replace(/0+$/, ""); // 0.60 -> 0.6
+    const pctHtml = v + "%";
+
+    POOL.push({ id: v + "-frac", value: v, type: "frac", make: () => fracHtml });
+    POOL.push({ id: v + "-dec",  value: v, type: "dec",  make: () => decHtml });
+    POOL.push({ id: v + "-pct",  value: v, type: "pct",  make: () => pctHtml });
+
+    for (const sh of SHAPES) {
+      if ((v * sh.d) % 100 === 0) {
+        const n = (v * sh.d) / 100; // 색칠할 칸 수 (n/d = v%)
+        POOL.push({ id: v + "-" + sh.key, value: v, type: "pic", make: () => sh.make(n) });
+      }
+    }
+  }
+
+  // 카드 종류: 분수, 소수, 백분율, 그림
+  const TYPES = ["frac", "dec", "pct", "pic"];
+
+  const boardEl = document.getElementById("board");
+  const scoreEl = document.getElementById("scoreNum");
+
+  let cards = [];        // {id, value, type, html}
+  let selected = null;
+  let score = 0;
+  let locked = false;
+
+  // 같은 값을 가진 두 카드가 하나라도 있는지 (id가 항상 다르므로 표기는 자동으로 다름)
+  function hasPair(list) {
+    for (let i = 0; i < list.length; i++)
+      for (let j = i + 1; j < list.length; j++)
+        if (list[i].value === list[j].value) return true;
+    return false;
+  }
+
+  // 보드가 만족해야 할 조건:
+  //  1) 맞출 수 있는 쌍이 최소 하나 있다
+  //  2) 분수, 소수, 백분율, 그림이 각각 최소 한 장씩 있다
+  //  3) 그림 카드 수가 난이도의 정해진 개수와 정확히 같다 (쉬움 2, 보통 3, 어려움 4)
+  function validBoard(list) {
+    return (
+      hasPair(list) &&
+      TYPES.every((t) => list.some((c) => c.type === t)) &&
+      list.filter((c) => c.type === "pic").length === LEVELS[level].pics
+    );
+  }
+
+  // 무작위 추첨이 계속 실패할 때 쓰는 확실한 방법
+  function fallbackPick(keep, free, need) {
+    if (need <= 2) {
+      // 새로 뽑는 수가 적을 때: 가능한 조합을 전부 확인
+      // (방금 없어진 두 장을 다시 놓으면 직전의 유효한 보드가 되므로 항상 답이 존재한다)
+      const order = shuffle(free.slice());
+      for (let i = 0; i < order.length; i++)
+        for (let j = i + 1; j < order.length; j++) {
+          const trial = [order[i], order[j]];
+          if (validBoard(keep.concat(trial))) return trial;
+        }
+      return order.slice(0, need);
+    }
+    // 처음부터 새로 뽑을 때(keep이 비어 있음):
+    //  그림 카드 P장을 고르고, 그 중 한 장과 값이 같은 분수 카드를 넣어 쌍을 만든 뒤,
+    //  소수·백분율 카드를 하나씩 넣고 나머지는 글자 카드로 무작위로 채운다
+    const P = LEVELS[level].pics;
+    const pics = shuffle(free.filter((c) => c.type === "pic"));
+    const texts = shuffle(free.filter((c) => c.type !== "pic"));
+    const chosen = pics.slice(0, P);
+    chosen.push(texts.find((c) => c.type === "frac" && c.value === chosen[0].value));
+    for (const t of ["dec", "pct"]) {
+      chosen.push(texts.find((c) => c.type === t && !chosen.includes(c)));
+    }
+    const rest = texts.filter((c) => !chosen.includes(c));
+    return chosen.concat(rest.slice(0, need - chosen.length));
+  }
+
+  // keep: 보드에 남는 카드들, need: 새로 뽑을 개수
+  // 같은 표기(id)가 중복되지 않고, validBoard 조건을 항상 만족하도록 뽑는다.
+  function draw(keep, need) {
+    const used = new Set(keep.map((c) => c.id));
+    const free = POOL.filter((c) => !used.has(c.id));
+    const freePics = free.filter((c) => c.type === "pic");
+    const freeTexts = free.filter((c) => c.type !== "pic");
+    // 남은 카드의 그림 수를 보고, 새로 뽑을 그림 카드 수를 정한다
+    const picNeed = LEVELS[level].pics - keep.filter((c) => c.type === "pic").length;
+    let picked = null;
+
+    if (picNeed >= 0 && picNeed <= need) {
+      for (let t = 0; t < 500 && !picked; t++) {
+        const trial = shuffle(freePics.slice()).slice(0, picNeed)
+          .concat(shuffle(freeTexts.slice()).slice(0, need - picNeed));
+        if (validBoard(keep.concat(trial))) picked = trial;
+      }
+    }
+    if (!picked) picked = fallbackPick(keep, free, need);
+
+    // 이 시점에 그림의 색칠 패턴이 정해진다 (이후 다시 그려도 바뀌지 않음)
+    return picked.map((c) => ({ id: c.id, value: c.value, type: c.type, html: c.make() }));
+  }
+
+  // ---------- 타임어택 ----------
+  const TIME_LIMIT = 60;                 // 제한 시간(초)
+  const LEVEL_NAMES = { easy: "쉬움", normal: "보통", hard: "어려움" };
+  const RECORD_KEY = "fraction-match-timed-records-v1";
+
+  const timeEl = document.getElementById("timeNum");
+  const timeBox = document.getElementById("timeBox");
+  const overlayEl = document.getElementById("overlay");
+  const ovTitle = document.getElementById("ovTitle");
+  const ovBody = document.getElementById("ovBody");
+  const startBtn = document.getElementById("startBtn");
+
+  let playing = false;
+  let timerId = null;
+  let endAt = 0;
+
+  // 이 브라우저에 저장된 기록 (난이도별 상위 5개). 저장소를 못 쓰는 환경에서도 게임은 동작한다.
+  function loadRecords() {
+    try { return JSON.parse(localStorage.getItem(RECORD_KEY)) || {}; } catch (e) { return {}; }
+  }
+  function saveScore(lv, s) {
+    const all = loadRecords();
+    const before = all[lv] || [];
+    const bestBefore = before.length ? before[0] : 0;
+    const list = before.concat(s).sort((a, b) => b - a).slice(0, 5);
+    all[lv] = list;
+    try { localStorage.setItem(RECORD_KEY, JSON.stringify(all)); } catch (e) {}
+    return { list, isNewBest: s > bestBefore };
+  }
+
+  function showOverlay(title, bodyHtml, btnText) {
+    ovTitle.textContent = title;
+    ovBody.innerHTML = bodyHtml;
+    startBtn.textContent = btnText;
+    overlayEl.classList.remove("hidden");
+  }
+
+  function recordListHtml(list, highlight) {
+    if (!list.length) return "<p>아직 기록이 없습니다.</p>";
+    let marked = false;
+    return "<ol>" + list.map((s) => {
+      const me = highlight !== undefined && s === highlight && !marked;
+      if (me) marked = true;
+      return `<li${me ? ' class="me"' : ""}>${s}점</li>`;
+    }).join("") + "</ol>";
+  }
+
+  function markLevel() {
+    boardEl.classList.toggle("cols3", LEVELS[level].cols === 3);
+    document.querySelectorAll(".level").forEach((b) => {
+      b.classList.toggle("active", b.dataset.level === level);
+      b.disabled = playing;
+    });
+  }
+
+  function stopTimer() {
+    if (timerId !== null) { clearInterval(timerId); timerId = null; }
+  }
+
+  function updateTime() {
+    const left = Math.max(0, Math.ceil((endAt - Date.now()) / 1000));
+    timeEl.textContent = left;
+    timeBox.classList.toggle("low", left <= 10);
+    if (left <= 0) endGame();
+  }
+
+  // 시작 화면 (카드는 시작 전까지 보이지 않는다)
+  function showStart() {
+    stopTimer();
+    playing = false;
+    locked = true;
+    selected = null;
+    cards = [];
+    score = 0;
+    scoreEl.textContent = score;
+    timeEl.textContent = TIME_LIMIT;
+    timeBox.classList.remove("low");
+    boardEl.innerHTML = "";
+    markLevel();
+    const list = loadRecords()[level] || [];
+    showOverlay(
+      `${LEVEL_NAMES[level]} · ${LEVELS[level].count}장`,
+      `<p>${TIME_LIMIT}초 안에 최대한 많은 쌍을 맞추세요.<br>버튼을 누르면 바로 시작됩니다.</p>` +
+      `<p><b>내 기록 (이 기기)</b></p>` + recordListHtml(list),
+      "시작"
+    );
+  }
+
+  function startGame() {
+    // 어느 난이도든 쌍 1개 이상 + 분수·소수·백분율·그림 각 1장 이상 + 그림 개수 고정을 draw()가 보장한다
+    cards = shuffle(draw([], LEVELS[level].count));
+    selected = null;
+    score = 0;
+    scoreEl.textContent = score;
+    playing = true;
+    locked = false;
+    markLevel();
+    overlayEl.classList.add("hidden");
+    render();
+    endAt = Date.now() + TIME_LIMIT * 1000;
+    timeEl.textContent = TIME_LIMIT;
+    timeBox.classList.remove("low");
+    stopTimer();
+    timerId = setInterval(updateTime, 100);
+  }
+
+  function endGame() {
+    if (!playing) return;
+    stopTimer();
+    playing = false;
+    locked = true;
+    timeEl.textContent = 0;
+    const { list, isNewBest } = saveScore(level, score);
+    markLevel();
+    showOverlay(
+      "시간 종료!",
+      `<div class="big">${score}점</div>` +
+      (isNewBest && score > 0 ? `<p class="new">최고 기록 갱신!</p>` : "") +
+      `<p>${LEVEL_NAMES[level]} · ${LEVELS[level].count}장 기록 (이 기기)</p>` +
+      recordListHtml(list, score),
+      "다시 도전"
+    );
+  }
+
+  function setLevel(next) {
+    if (playing) return;
+    level = next;
+    showStart();
+  }
+
+  function newGame() { showStart(); }
+
+  function render() {
+    boardEl.innerHTML = "";
+    cards.forEach((card, i) => {
+      const btn = document.createElement("button");
+      btn.className = "card";
+      btn.innerHTML = card.html;
+      btn.addEventListener("click", () => onClick(i));
+      boardEl.appendChild(btn);
+    });
+  }
+
+  const el = (i) => boardEl.children[i];
+
+  function onClick(i) {
+    if (locked || !playing) return;
+
+    if (selected === null) {
+      selected = i;
+      el(i).classList.add("selected");
+      return;
+    }
+
+    if (selected === i) {
+      el(i).classList.remove("selected");
+      selected = null;
+      return;
+    }
+
+    const first = selected;
+    selected = null;
+    locked = true;
+
+    if (cards[first].value === cards[i].value) {
+      el(first).classList.add("pop");
+      el(i).classList.add("pop");
+      score++;
+      scoreEl.textContent = score;
+      setTimeout(() => {
+        if (!playing) return; // 그 사이 시간이 끝났다면 아무것도 하지 않는다
+        const keep = cards.filter((_, k) => k !== first && k !== i);
+        const fresh = draw(keep, 2);
+        cards[first] = fresh[0];
+        cards[i] = fresh[1];
+        render();
+        locked = false;
+      }, 200);
+    } else {
+      el(first).classList.remove("selected");
+      el(first).classList.add("wrong");
+      el(i).classList.add("wrong");
+      setTimeout(() => {
+        el(first).classList.remove("wrong");
+        el(i).classList.remove("wrong");
+        locked = false;
+      }, 300);
+    }
+  }
+
+  document.querySelectorAll(".level").forEach((b) =>
+    b.addEventListener("click", () => setLevel(b.dataset.level)));
+  startBtn.addEventListener("click", startGame);
+  document.getElementById("reset").addEventListener("click", showStart);
+  showStart();
+})();
+</script>
+</body>
+</html>
