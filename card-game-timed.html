@@ -130,14 +130,14 @@
 </style>
 </head>
 <body>
-  <h1>분수·소수·백분율·그림 짝맞추기<br>타임어택 1분</h1>
+  <h1>분수·소수·백분율·그림 짝맞추기<br>타임어택 2분</h1>
   <div id="levels">
     <button class="level" data-level="easy">쉬움 (6장)</button>
     <button class="level" data-level="normal">보통 (9장)</button>
     <button class="level" data-level="hard">어려움 (12장)</button>
   </div>
   <div id="stats">
-    <div id="timeBox">남은 시간: <b id="timeNum">60</b>초</div>
+    <div id="timeBox">남은 시간: <b id="timeNum">120</b>초</div>
     <div id="score">점수: <b id="scoreNum">0</b></div>
   </div>
   <div id="stage">
@@ -148,7 +148,7 @@
       <button id="startBtn">시작</button>
     </div>
   </div>
-  <div id="hint">크기가 같은 카드 두 장을 클릭하세요.<br>1분 안에 가장 많이 맞춘 사람이 이깁니다.</div>
+  <div id="hint">크기가 같은 카드 두 장을 클릭하세요.<br>2분 안에 가장 많이 맞춘 사람이 이깁니다.</div>
   <button id="reset">처음으로</button>
 
 <script>
@@ -357,7 +357,7 @@
   }
 
   // ---------- 타임어택 ----------
-  const TIME_LIMIT = 60;                 // 제한 시간(초)
+  const TIME_LIMIT = 120;                 // 제한 시간(초)
   const LEVEL_NAMES = { easy: "쉬움", normal: "보통", hard: "어려움" };
   const RECORD_KEY = "fraction-match-timed-records-v1";
 
