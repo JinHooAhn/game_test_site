@@ -1,0 +1,208 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>구구단 벌집 미로</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Jua&family=Noto+Sans+KR:wght@400;700&display=swap">
+<style>
+/* Layout: one centered column; header, dan picker, status row, hex board (SVG), equation strip. */
+:root{
+  --bg:#eef3f1; --panel:#ffffff; --ink:#1d2b2a; --muted:#5d6f6c; --line:#cfdcd8;
+  --cell:#fbfdfc; --cell-edge:#9fb5b0; --path:#2f9e77; --path-ink:#ffffff;
+  --now:#f2a81d; --now-ink:#2b1d00; --bad:#d8463b; --accent:#2f9e77;
+  --f-display:'Jua','Noto Sans KR',sans-serif; --f-body:'Noto Sans KR',system-ui,sans-serif;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#121a19; --panel:#1b2625; --ink:#e6f1ee; --muted:#93a8a4; --line:#2e3f3c;
+  --cell:#223130; --cell-edge:#4b6560; --path:#3cb98c; --path-ink:#06231a;
+  --now:#f2b13a; --now-ink:#2b1d00; --bad:#ef6a5f; --accent:#3cb98c; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#121a19; --panel:#1b2625; --ink:#e6f1ee; --muted:#93a8a4; --line:#2e3f3c;
+  --cell:#223130; --cell-edge:#4b6560; --path:#3cb98c; --path-ink:#06231a;
+  --now:#f2b13a; --now-ink:#2b1d00; --bad:#ef6a5f; --accent:#3cb98c; color-scheme:dark}
+body{background:var(--bg);color:var(--ink);font-family:var(--f-body);
+  padding-block:20px 32px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));font-size:15px}
+.wrap{max-width:460px;margin:0 auto;display:flex;flex-direction:column;gap:14px}
+h1{font-family:var(--f-display);font-weight:400;font-size:30px;margin:0;line-height:1.15;text-wrap:balance}
+.sub{margin:4px 0 0;color:var(--muted);font-size:14px;line-height:1.5}
+.dans{display:grid;grid-template-columns:repeat(8,1fr);gap:6px}
+.dans button{font-family:var(--f-display);font-size:19px;padding:8px 0;border:1.5px solid var(--line);background:var(--panel);color:var(--ink);border-radius:10px;cursor:pointer}
+.dans button[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:var(--path-ink)}
+button:focus-visible,.cell:focus-visible polygon{outline:3px solid var(--now);outline-offset:2px}
+.status{display:flex;align-items:center;gap:10px;flex-wrap:wrap;justify-content:space-between}
+.target{font-family:var(--f-display);font-size:24px}
+.target b{font-weight:400;color:var(--now);background:var(--now-ink);padding:1px 10px;border-radius:8px;font-variant-numeric:tabular-nums}
+.stats{color:var(--muted);font-size:13px;font-variant-numeric:tabular-nums;display:flex;gap:12px}
+.board{background:var(--panel);border:1.5px solid var(--line);border-radius:20px;padding:6px;position:relative}
+svg{display:block;width:100%;height:auto;max-height:70vh;touch-action:manipulation}
+.cell{cursor:pointer;-webkit-tap-highlight-color:transparent;outline:none}
+.cell polygon{fill:var(--cell);stroke:var(--cell-edge);stroke-width:2;transition:fill .15s}
+.cell text{font-family:var(--f-display);font-size:25px;fill:var(--ink);text-anchor:middle;dominant-baseline:central;pointer-events:none;font-variant-numeric:tabular-nums}
+.cell.done polygon{fill:var(--path);stroke:var(--path)}
+.cell.done text{fill:var(--path-ink)}
+.cell.cur polygon{fill:var(--now);stroke:var(--now)}
+.cell.cur text{fill:var(--now-ink)}
+.cell.bad polygon{fill:var(--bad);animation:shake .3s}
+.cell.bad text{fill:#fff}
+.cell.hint polygon{stroke:var(--now);stroke-width:5}
+.tag{font-family:var(--f-body);font-size:11px!important;font-weight:700}
+.trail{fill:none;stroke:var(--path-ink);stroke-opacity:.9;stroke-width:5;stroke-linecap:round;stroke-linejoin:round;pointer-events:none}
+@keyframes shake{25%{transform:translateX(-4px)}75%{transform:translateX(4px)}}
+.eq{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;font-variant-numeric:tabular-nums}
+.eq div{padding:6px 4px;text-align:center;border-radius:8px;border:1.5px dashed var(--line);color:var(--muted);font-size:14px}
+.eq div.on{border-style:solid;border-color:var(--path);background:var(--path);color:var(--path-ink);font-weight:700}
+.row{display:flex;gap:8px}
+.row button{flex:1;font:700 14px var(--f-body);padding:11px;border-radius:10px;border:1.5px solid var(--line);background:var(--panel);color:var(--ink);cursor:pointer}
+.row button.main{background:var(--accent);border-color:var(--accent);color:var(--path-ink)}
+.win{position:absolute;inset:0;border-radius:20px;background:color-mix(in srgb,var(--panel) 92%,transparent);display:flex;flex-direction:column;gap:10px;align-items:center;justify-content:center;text-align:center;padding:20px}
+.win[hidden]{display:none}
+.win h2{font-family:var(--f-display);font-weight:400;font-size:34px;margin:0}
+.win p{margin:0;color:var(--muted)}
+.win .row{width:100%;max-width:300px}
+.help{color:var(--muted);font-size:13px;line-height:1.6;margin:0}
+@media (prefers-reduced-motion:reduce){.cell.bad polygon{animation:none}}
+</style>
+
+<div class="wrap">
+  <header>
+    <h1>구구단 벌집 미로</h1>
+    <p class="sub" id="sub">맨 위 칸에서 출발! 구구단 2단의 수(2, 4, 6…)를 차례로 이어서 맨 아래 칸까지 가 보세요.</p>
+  </header>
+  <div class="dans" id="dans" role="group" aria-label="단 선택"></div>
+  <div class="status">
+    <div class="target">다음 <b id="next">2</b></div>
+    <div class="stats"><span id="time">0:00</span><span id="miss">실수 0</span></div>
+  </div>
+  <div class="board">
+    <svg id="svg" viewBox="-170 -188 340 376" role="group" aria-label="육각형 판"></svg>
+    <div class="win" id="win" hidden>
+      <h2>완성!</h2>
+      <p id="winMsg"></p>
+      <div class="row"><button id="again">같은 단 다시</button><button class="main" id="nextDan">다음 단으로</button></div>
+    </div>
+  </div>
+  <div class="eq" id="eq"></div>
+  <div class="row"><button id="hint">힌트</button><button id="fresh">새 판</button></div>
+  <p class="help">틀린 칸을 누르면 빨갛게 흔들리고 실수로 기록됩니다.</p>
+</div>
+
+<script>
+(function(){
+  var S=40, R3=Math.sqrt(3), NB=[[1,0],[-1,0],[0,1],[0,-1],[1,-1],[-1,1]];
+  var cells=[]; // {q,r,x,y}
+  for(var q=-2;q<=2;q++)for(var r=-2;r<=2;r++)if(Math.abs(q+r)<=2)cells.push({q:q,r:r,x:S*1.5*q,y:S*R3*(r+q/2)});
+  var byKey={}; cells.forEach(function(c,i){c.i=i;byKey[c.q+','+c.r]=c});
+  cells.forEach(function(c){c.nb=NB.map(function(d){return byKey[(c.q+d[0])+','+(c.r+d[1])]}).filter(Boolean).map(function(n){return n.i})});
+  var TOP=byKey['0,-2'].i, BOT=byKey['0,2'].i;
+
+  var dan=2, vals=[], path=[], solution=[], misses=0, t0=0, timer=null, done=false, svg=document.getElementById('svg');
+  function rnd(n){return Math.floor(Math.random()*n)}
+  function shuffle(a){for(var i=a.length-1;i>0;i--){var j=rnd(i+1),t=a[i];a[i]=a[j];a[j]=t}return a}
+
+  function randomPath(){ // self-avoiding walk, 9 cells, top to bottom
+    for(var tries=0;tries<2000;tries++){
+      var p=[TOP],used={};used[TOP]=1;
+      (function go(){
+        if(p.length===9)return p[8]===BOT;
+        var cur=p[p.length-1],opts=shuffle(cells[cur].nb.slice());
+        for(var k=0;k<opts.length;k++){var n=opts[k];
+          if(used[n]||(n===BOT&&p.length<8))continue;
+          p.push(n);used[n]=1;if(go())return true;p.pop();used[n]=0}
+        return false})();
+      if(p.length===9&&p[8]===BOT)return p;
+    }
+  }
+  function countSolutions(v,N){
+    var total=0;
+    function go(i,k,used){
+      if(k===9){total++;return}
+      cells[i].nb.forEach(function(n){if(!used[n]&&v[n]===N*(k+1)){used[n]=1;go(n,k+1,used);used[n]=0}})
+    }
+    cells.forEach(function(c){if(v[c.i]===N){var u={};u[c.i]=1;go(c.i,1,u)}});
+    return total;
+  }
+  function build(N){
+    // N×1 ~ N×9 은 판 위에 딱 한 번씩만 나온다. 나머지 10칸에는 그 값을 쓰지 않으므로 갈림길이 생기지 않는다.
+    var p=randomPath(),v=new Array(19).fill(0),onPath={},inTable={};
+    for(var k=1;k<=9;k++)inTable[N*k]=1;
+    p.forEach(function(ci,k){v[ci]=N*(k+1);onPath[ci]=1});
+    var pool=[];
+    for(var k=1;k<=9;k++){pool.push(N*k-1,N*k+1,N*k+N+1)}
+    for(var k=10;k<=13;k++){pool.push(N*k)}
+    pool=pool.filter(function(x){return x>0&&!inTable[x]});
+    cells.forEach(function(c){if(!onPath[c.i])v[c.i]=pool[rnd(pool.length)]});
+    return {v:v,p:p};
+  }
+
+  function hexPoints(s){var a=[];for(var k=0;k<6;k++){var t=Math.PI/3*k;a.push((s*Math.cos(t)).toFixed(1)+','+(s*Math.sin(t)).toFixed(1))}return a.join(' ')}
+  var NS='http://www.w3.org/2000/svg';
+  function el(n,a,p){var e=document.createElementNS(NS,n);for(var k in a)e.setAttribute(k,a[k]);if(p)p.appendChild(e);return e}
+
+  var gEls=[],trail;
+  function draw(){
+    svg.innerHTML='';gEls=[];
+    cells.forEach(function(c){
+      var g=el('g',{'class':'cell',transform:'translate('+c.x+','+c.y+')',tabindex:0,role:'button','aria-label':vals[c.i]},svg);
+      el('polygon',{points:hexPoints(S-2.5)},g);
+      var t=el('text',{x:0,y:1},g);t.textContent=vals[c.i];
+      g.addEventListener('click',function(){tap(c.i)});
+      g.addEventListener('keydown',function(e){if(e.key==='Enter'||e.key===' '){e.preventDefault();tap(c.i)}});
+      gEls.push(g);
+    });
+    trail=el('polyline',{'class':'trail',points:''},svg);
+    // start / goal markers
+    [[TOP,'출발'],[BOT,'도착']].forEach(function(m){
+      var c=cells[m[0]];var t=el('text',{x:c.x,y:c.y-S*0.62,'class':'tag','text-anchor':'middle'},svg);
+      t.style.fill='var(--muted)';t.style.fontSize='11px';t.style.fontWeight='700';t.style.textAnchor='middle';t.textContent=m[1];
+    });
+  }
+  function refresh(){
+    gEls.forEach(function(g,i){g.setAttribute('class','cell'+(path.indexOf(i)>-1?' done':'')+(path.length&&path[path.length-1]===i&&!done?' cur':''))});
+    trail.setAttribute('points',path.map(function(i){return cells[i].x+','+cells[i].y}).join(' '));
+    document.getElementById('next').textContent=done?'끝':dan*(path.length+1);
+    document.getElementById('miss').textContent='실수 '+misses;
+    var eq=document.getElementById('eq');eq.innerHTML='';
+    for(var k=1;k<=9;k++){var d=document.createElement('div');d.textContent=dan+' × '+k+' = '+(k<=path.length?dan*k:'?');if(k<=path.length)d.className='on';eq.appendChild(d)}
+  }
+  function fmt(s){return Math.floor(s/60)+':'+('0'+(s%60)).slice(-2)}
+  function tick(){document.getElementById('time').textContent=fmt(Math.floor((Date.now()-t0)/1000))}
+  function clearHint(){gEls.forEach(function(g){g.classList.remove('hint')})}
+
+  function tap(i){
+    if(done)return;
+    clearHint();
+    if(!t0){t0=Date.now();timer=setInterval(tick,500)}
+    var k=path.length;
+    if(k&&path[k-1]===i)return;
+    var ok=vals[i]===dan*(k+1)&&(k===0?i===TOP:cells[path[k-1]].nb.indexOf(i)>-1&&path.indexOf(i)<0);
+    if(ok){path.push(i);refresh();if(path.length===9)win();return}
+    misses++;refresh();
+    var g=gEls[i];g.classList.add('bad');setTimeout(function(){g.classList.remove('bad')},350);
+  }
+  function win(){
+    done=true;clearInterval(timer);tick();refresh();
+    var sec=Math.floor((Date.now()-t0)/1000);
+    document.getElementById('winMsg').textContent=dan+'단 완성 · '+fmt(sec)+' · 실수 '+misses+'번';
+    document.getElementById('win').hidden=false;
+    document.getElementById('nextDan').textContent=dan===9?'2단으로':(dan+1)+'단으로';
+  }
+  function start(N){
+    dan=N;var b=build(N);vals=b.v;solution=b.p;path=[];misses=0;done=false;t0=0;clearInterval(timer);
+    document.getElementById('sub').textContent='맨 위 칸에서 출발! 구구단 '+N+'단의 수('+N+', '+N*2+', '+N*3+'…)를 차례로 이어서 맨 아래 칸까지 가 보세요.';
+    document.getElementById('time').textContent='0:00';document.getElementById('win').hidden=true;
+    document.querySelectorAll('#dans button').forEach(function(b){b.setAttribute('aria-pressed',+b.dataset.n===N)});
+    draw();refresh();
+  }
+  var dh=document.getElementById('dans');
+  for(var n=2;n<=9;n++){(function(n){var b=document.createElement('button');b.textContent=n;b.dataset.n=n;b.setAttribute('aria-label',n+'단');b.onclick=function(){start(n)};dh.appendChild(b)})(n)}
+  document.getElementById('fresh').onclick=function(){start(dan)};
+  document.getElementById('again').onclick=function(){start(dan)};
+  document.getElementById('nextDan').onclick=function(){start(dan===9?2:dan+1)};
+  document.getElementById('hint').onclick=function(){
+    if(done)return;clearHint();
+    var k=path.length;if(k&&path.some(function(p,j){return p!==solution[j]})){gEls[path[path.length-1]].classList.add('hint');return}
+    gEls[solution[k]].classList.add('hint');
+  };
+  start(2);
+})();
+</script>
+
+</body></html>
