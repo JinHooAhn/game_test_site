@@ -113,3 +113,22 @@ canvas {
 
 .hint { text-align: center; opacity: 0.6; font-size: 14px; }
 .open-link { text-align: center; font-size: 14px; margin: 12px 0 0; }
+
+/* ---------- 스마트폰: 게임 화면이 한 화면에 들어오도록 ---------- */
+/* 게임 페이지(.game-frame이 있는 페이지)에서만 적용된다. 머리글과 제목을 줄이고,
+   iframe 높이를 화면 높이에 맞춰 페이지 스크롤과 게임 스크롤이 겹치지 않게 한다. */
+@media (max-width: 600px) {
+  body:has(.game-frame) header { padding: 8px 12px; }
+  body:has(.game-frame) header h1 { margin: 0; font-size: 1rem; }
+  body:has(.game-frame) main { padding: 0 8px; }
+  body:has(.game-frame) .back-link { margin: 2px 0 6px; }
+  body:has(.game-frame) .game-page-title { display: none; }
+  body:has(.game-frame) .game-frame { padding: 4px; border-radius: 10px; }
+  body:has(.game-frame) .game-frame iframe {
+    height: calc(100vh - 120px);   /* dvh를 지원하지 않는 브라우저용 */
+    height: calc(100dvh - 120px);  /* 주소창 높이가 변해도 맞는 값 */
+    min-height: 460px;
+  }
+  body:has(.game-frame) .open-link { margin: 8px 0 0; }
+  body:has(.game-frame) footer { padding: 12px 16px; }
+}
