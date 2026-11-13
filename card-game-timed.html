@@ -5,6 +5,57 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>분수·소수·백분율·그림 짝맞추기 타임어택</title>
 <style>
+  /* 라이트/다크 모드: 다른 게임과 같은 방식(CSS 변수 + prefers-color-scheme) */
+  :root {
+    --bg: #edf1f7;
+    --surface: #ffffff;
+    --ink: #16203a;
+    --muted: #5b6781;
+    --line: #d5dce8;
+    --accent: #3b6cf6;
+    --on-accent: #ffffff;
+    --sel-bg: #e6edff;
+    --bad: #e5484d;
+    --bad-soft: #ffe5e5;
+    --overlay: rgba(237, 241, 247, .96);
+    --pic-on: #4f7cff;
+    --pic-off: #ffffff;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #0f1626;
+      --surface: #18223a;
+      --ink: #eaf0ff;
+      --muted: #9aa7c4;
+      --line: #2a3656;
+      --accent: #8fb0ff;
+      --on-accent: #0f1626;
+      --sel-bg: #1e2f63;
+      --bad: #ff8a81;
+      --bad-soft: #4a2220;
+      --overlay: rgba(15, 22, 38, .96);
+      --pic-on: #6f93ff;
+      --pic-off: #0f1626;
+      color-scheme: dark;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #0f1626;
+    --surface: #18223a;
+    --ink: #eaf0ff;
+    --muted: #9aa7c4;
+    --line: #2a3656;
+    --accent: #8fb0ff;
+    --on-accent: #0f1626;
+    --sel-bg: #1e2f63;
+    --bad: #ff8a81;
+    --bad-soft: #4a2220;
+    --overlay: rgba(15, 22, 38, .96);
+    --pic-on: #6f93ff;
+    --pic-off: #0f1626;
+    color-scheme: dark;
+  }
+
   * { box-sizing: border-box; }
   body {
     margin: 0;
@@ -15,26 +66,26 @@
     justify-content: center;
     gap: 20px;
     font-family: -apple-system, "Noto Sans KR", "Malgun Gothic", sans-serif;
-    background: #f3f5f9;
-    color: #222;
+    background: var(--bg);
+    color: var(--ink);
     user-select: none;
   }
   h1 { margin: 0; font-size: 1.5rem; text-align: center; padding: 0 12px; }
   #levels { display: flex; gap: 8px; }
   .level {
     padding: 8px 16px;
-    border: 2px solid #c9d1e3;
+    border: 2px solid var(--line);
     border-radius: 999px;
-    background: #fff;
-    color: #444;
+    background: var(--surface);
+    color: var(--ink);
     font-size: .95rem;
     cursor: pointer;
   }
-  .level.active { background: #3b6cf6; border-color: #3b6cf6; color: #fff; font-weight: 700; }
+  .level.active { background: var(--accent); border-color: var(--accent); color: var(--on-accent); font-weight: 700; }
   .level:disabled { opacity: .5; cursor: not-allowed; }
   #stats { display: flex; gap: 28px; font-size: 1.2rem; }
-  #stats b { font-size: 1.6rem; color: #3b6cf6; }
-  #stats #timeBox.low b { color: #e5484d; }
+  #stats b { font-size: 1.6rem; color: var(--accent); }
+  #stats #timeBox.low b { color: var(--bad); }
   #stage {
     position: relative;
     display: flex;
@@ -53,24 +104,24 @@
     gap: 10px;
     padding: 16px;
     border-radius: 16px;
-    background: rgba(243, 245, 249, .96);
+    background: var(--overlay);
     text-align: center;
     line-height: 1.5;
   }
   #overlay.hidden { display: none; }
   #overlay h2 { margin: 0; font-size: 1.4rem; }
-  #overlay p { margin: 0; font-size: .95rem; color: #555; }
-  #overlay .big { font-size: 2.6rem; font-weight: 800; color: #3b6cf6; line-height: 1.1; }
-  #overlay .new { color: #e5484d; font-weight: 700; }
-  #overlay ol { margin: 0; padding-left: 1.4em; text-align: left; font-size: .9rem; color: #444; }
-  #overlay ol li.me { font-weight: 700; color: #3b6cf6; }
+  #overlay p { margin: 0; font-size: .95rem; color: var(--muted); }
+  #overlay .big { font-size: 2.6rem; font-weight: 800; color: var(--accent); line-height: 1.1; }
+  #overlay .new { color: var(--bad); font-weight: 700; }
+  #overlay ol { margin: 0; padding-left: 1.4em; text-align: left; font-size: .9rem; color: var(--muted); }
+  #overlay ol li.me { font-weight: 700; color: var(--accent); }
   #startBtn {
     margin-top: 6px;
     padding: 12px 28px;
     border: 0;
     border-radius: 10px;
-    background: #3b6cf6;
-    color: #fff;
+    background: var(--accent);
+    color: var(--on-accent);
     font-size: 1.05rem;
     font-weight: 700;
     cursor: pointer;
@@ -81,19 +132,16 @@
     gap: 12px;
     width: min(92vw, 440px);
   }
+  /* 쉬움 2x2, 보통 가로 3 x 세로 2, 어려움 3x3 (화면 폭과 관계없이 고정) */
   #board[data-level="easy"]   { grid-template-columns: repeat(2, 1fr); width: min(92vw, 300px); }
   #board[data-level="normal"] { grid-template-columns: repeat(3, 1fr); width: min(92vw, 330px); }
   #board[data-level="hard"]   { grid-template-columns: repeat(3, 1fr); width: min(92vw, 330px); }
-  /* 휴대폰처럼 좁은 화면에서는 6장을 가로 2 x 세로 3으로 */
-  @media (max-width: 520px) {
-    #board[data-level="normal"] { grid-template-columns: repeat(2, 1fr); width: min(92vw, 300px); }
-  }
   .card {
     aspect-ratio: 3 / 4;
-    border: 2px solid #c9d1e3;
+    border: 2px solid var(--line);
     border-radius: 12px;
-    background: #fff;
-    color: #222;
+    background: var(--surface);
+    color: var(--ink);
     font-size: 1.7rem;
     font-weight: 700;
     cursor: pointer;
@@ -104,10 +152,15 @@
     transition: transform .12s, background .12s, border-color .12s, opacity .2s;
   }
   .card:hover { transform: translateY(-3px); }
-  .card.selected { background: #e6edff; border-color: #3b6cf6; transform: translateY(-3px); }
-  .card.wrong { background: #ffe5e5; border-color: #e5484d; animation: shake .25s; }
+  .card:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+  .card.selected { background: var(--sel-bg); border-color: var(--accent); transform: translateY(-3px); }
+  .card.wrong { background: var(--bad-soft); border-color: var(--bad); animation: shake .25s; }
   .card.pop { opacity: 0; transform: scale(.7); }
   .card svg { width: 84%; height: auto; max-height: 84%; display: block; }
+  /* 그림 카드의 칸 색 (CSS 변수라서 다크 모드에서 함께 바뀐다) */
+  .card svg .c { stroke: var(--ink); stroke-width: 2; stroke-linejoin: round; }
+  .card svg .c.on { fill: var(--pic-on); }
+  .card svg .c.off { fill: var(--pic-off); }
   .frac {
     display: inline-flex;
     flex-direction: column;
@@ -123,15 +176,18 @@
     25% { transform: translateX(-5px); }
     75% { transform: translateX(5px); }
   }
-  #hint { font-size: .85rem; color: #777; text-align: center; padding: 0 16px; line-height: 1.5; }
+  #hint { font-size: .85rem; color: var(--muted); text-align: center; padding: 0 16px; line-height: 1.5; }
   #reset {
     padding: 8px 18px;
     border: 0;
     border-radius: 8px;
-    background: #3b6cf6;
-    color: #fff;
+    background: var(--accent);
+    color: var(--on-accent);
     font-size: .95rem;
     cursor: pointer;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .card, .card.wrong { animation: none; transition: none; }
   }
 </style>
 </head>
@@ -165,7 +221,6 @@
     hard:   { count: 9, pics: 3 },
   };
   let level = "normal";
-  const FILL = "#4f7cff";
 
   // 백분율 값 -> 기약분수(분자/분모)
   const FRACTIONS = {
@@ -192,14 +247,15 @@
   }
 
   // ---------- 그림 만들기 (SVG) ----------
+  // 색은 CSS 클래스(.c.on / .c.off)로 정해서 라이트/다크 모드에 따라 바뀐다
   const svgWrap = (viewBox, inner) =>
     `<svg viewBox="${viewBox}" xmlns="http://www.w3.org/2000/svg">${inner}</svg>`;
 
   const pathCell = (d, on) =>
-    `<path d="${d}" fill="${on ? FILL : "#fff"}" stroke="#333" stroke-width="2" stroke-linejoin="round"/>`;
+    `<path class="c ${on ? "on" : "off"}" d="${d}"/>`;
 
   const rectCell = (x, y, size, on) =>
-    `<rect x="${x}" y="${y}" width="${size}" height="${size}" fill="${on ? FILL : "#fff"}" stroke="#333" stroke-width="2"/>`;
+    `<rect class="c ${on ? "on" : "off"}" x="${x}" y="${y}" width="${size}" height="${size}"/>`;
 
   // 0번 칸부터 차례대로 n개 (항상 같은 위치에서 시작해 이어서 색칠)
   function firstN(n) {
